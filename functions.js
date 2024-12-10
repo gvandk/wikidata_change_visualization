@@ -339,18 +339,20 @@ export async function generateResponse(model="llama3.1", prompt, setting) {
       throw new Error("Invalid setting provided.");
   }
 
+
   try {
-      // Send the request using the Ollama SDK
-      const response = await ollama.generate({
-          model: model,
-          system: sysMessage,
-          prompt: prompt.replace(/[^\w\s,.:;!?\[\]{}()]/g, ""), // Sanitize the prompt
-          options: {
-              seed: 42,
-              temperature: 0.8,
-              top_k: 40,
-          },
-      });
+    // Construct the request to the appropriate endpoint
+    const sanitizedPrompt = prompt.replace(/[^\w\s,.:;!?\[\]{}()]/g, ""); // Sanitize the prompt
+    const response = await axios.get('http://llama-max-ollama.ai.wu.ac.at/api/generate', {
+        params: {
+            model: model,
+            system: sysMessage,
+            prompt: sanitizedPrompt,
+            seed: 42,
+            temperature: 0.8,
+            top_k: 40,
+        },
+    });
 
       console.log("Response:", response.text);
       return response.text; // Return the generated response
