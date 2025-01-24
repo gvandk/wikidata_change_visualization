@@ -29,6 +29,22 @@ app.get("/", (req, res) => {
   res.render('visualization');
 });
 
+app.get("/getDataDirect/:wikidataCode/:year/:includeID", (req, res) => {
+  console.log(req.params.year);
+  res.send(JSON.stringify({ username: "example" }))
+});
+
+
+
+
+app.get("/getDbpName/:wikidataCode", (req, res) => {
+  const wikidataCode = req.params.wikidataCode;
+  res.send(JSON.stringify({ username: "example" }))
+});
+
+
+
+
 app.get("/wd_query/*/*", (req, res) => {
   const year = req.params[0]
   const entity_id = req.params[1]
