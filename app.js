@@ -6,7 +6,7 @@ const ejs = require('ejs');
 const path = require('path')
 
 
-const query = require('./kg');
+const graph = require('./graph');
 const app = express();
 
 app.set('view engine', 'ejs');
@@ -40,6 +40,25 @@ app.get("/getDataDirect/:wikidataCode/:year/:includeID", (req, res) => {
 app.get("/getDbpName/:wikidataCode", (req, res) => {
   const wikidataCode = req.params.wikidataCode;
   res.send(JSON.stringify({ username: "example" }))
+});
+
+
+app.get("/getEventsTemp/:name/:start/:end", (req, res) => {
+  const name = req.params.name;
+  const start = req.params.start;
+  const end = req.params.end;
+  graph.getEventsTemp(name, start, end, (err, data) => {
+    res.json(data);
+  });
+});
+
+app.get("/getEventsText/:name/:start/:end", (req, res) => {
+  const name = req.params.name;
+  const start = req.params.start;
+  const end = req.params.end;
+  graph.getEventsText(name, start, end, (err, data) => {
+    res.json(data);
+  });
 });
 
 

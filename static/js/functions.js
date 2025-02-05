@@ -1,15 +1,3 @@
-async function fetchEvents(query, endpoint) {
-	try {
-		const response = await axios.get(endpoint, {
-			params: { query, format: 'json' },
-		});
-
-		return response.data.results.bindings;
-	} catch (error) {
-		console.error(`Failed to fetch events from ${endpoint}: ${error.message}`);
-		throw error;
-	}
-}
 
 
 async function extractWikidataCodeFromWikipediaLink(wikipediaLink) {
@@ -209,147 +197,147 @@ async function fetchData(url) {
 
 
 
-async function getEventsTemp(name, start, end) {
-	if (end === "present") {
-		end = "3000";
-	}
+// async function getEventsTemp(name, start, end) {
+// 	if (end === "present") {
+// 		end = "3000";
+// 	}
 
-	const sparqlQuery = `
-	SELECT DISTINCT ?beginTime ?endTime (STR(?propertyLabel) AS ?propertyLabel) (STR(?objectLabel) AS ?objectLabel) ?graph
-	WHERE {
-			?actor owl:sameAs dbr:${name} .
-			?relation rdf:subject ?actor .
-			?relation rdf:object ?object .
+// 	const sparqlQuery = `
+// 	SELECT DISTINCT ?beginTime ?endTime (STR(?propertyLabel) AS ?propertyLabel) (STR(?objectLabel) AS ?objectLabel) ?graph
+// 	WHERE {
+// 			?actor owl:sameAs dbr:${name} .
+// 			?relation rdf:subject ?actor .
+// 			?relation rdf:object ?object .
 
-			GRAPH ?graph {
-					?object rdfs:label ?objectLabel .
-			}
+// 			GRAPH ?graph {
+// 					?object rdfs:label ?objectLabel .
+// 			}
 
-			?relation sem:roleType ?roleType .
-			?roleType rdfs:label ?propertyLabel .
-			FILTER(LANG(?propertyLabel) = "en") .
-			FILTER(LANG(?objectLabel) = "en") .
+// 			?relation sem:roleType ?roleType .
+// 			?roleType rdfs:label ?propertyLabel .
+// 			FILTER(LANG(?propertyLabel) = "en") .
+// 			FILTER(LANG(?objectLabel) = "en") .
 
-			?relation sem:hasBeginTimeStamp ?beginTime .
-			OPTIONAL {  
-					?relation sem:hasEndTimeStamp ?endTime .
-			}
-			FILTER (?beginTime >= "${start}-01-01"^^xsd:date) 
-	}
-	ORDER BY ?beginTime
-`;
+// 			?relation sem:hasBeginTimeStamp ?beginTime .
+// 			OPTIONAL {  
+// 					?relation sem:hasEndTimeStamp ?endTime .
+// 			}
+// 			FILTER (?beginTime >= "${start}-01-01"^^xsd:date) 
+// 	}
+// 	ORDER BY ?beginTime
+// `;
 
-	const endpoint = "https://eventkginterface.l3s.uni-hannover.de/sparql";
+// 	const endpoint = "https://eventkginterface.l3s.uni-hannover.de/sparql";
 
-	try {
-		const results = await fetchEvents(sparqlQuery, endpoint);
+// 	try {
+// 		const results = await fetchEvents(sparqlQuery, endpoint);
 
-		const processDict = {
-			beginTime: [],
-			endTime: [],
-			propertyLabel: [],
-			objectLabel: [],
-			source: [],
-		};
+// 		const processDict = {
+// 			beginTime: [],
+// 			endTime: [],
+// 			propertyLabel: [],
+// 			objectLabel: [],
+// 			source: [],
+// 		};
 
-		const seenPairs = new Set();
+// 		const seenPairs = new Set();
 
-		for (const result of results) {
-			const propertyLabel = result.propertyLabel.value;
-			const objectLabel = result.objectLabel.value;
-			const pair = `${propertyLabel}:${objectLabel}`;
+// 		for (const result of results) {
+// 			const propertyLabel = result.propertyLabel.value;
+// 			const objectLabel = result.objectLabel.value;
+// 			const pair = `${propertyLabel}:${objectLabel}`;
 
-			if (seenPairs.has(pair)) continue;
-			seenPairs.add(pair);
+// 			if (seenPairs.has(pair)) continue;
+// 			seenPairs.add(pair);
 
-			try {
-				if (result.endTime?.value && result.endTime.value <= `${end}-12-31`) {
-					processDict.endTime.push(result.endTime.value);
-				} else {
-					continue;
-				}
-			} catch {
-				processDict.endTime.push("");
-			}
+// 			try {
+// 				if (result.endTime?.value && result.endTime.value <= `${end}-12-31`) {
+// 					processDict.endTime.push(result.endTime.value);
+// 				} else {
+// 					continue;
+// 				}
+// 			} catch {
+// 				processDict.endTime.push("");
+// 			}
 
-			processDict.beginTime.push(result.beginTime.value);
-			processDict.propertyLabel.push(propertyLabel);
-			processDict.objectLabel.push(objectLabel);
-			processDict.source.push(
-				result.graph.value.replace("https://eventkg.l3s.uni-hannover.de/graph/", "")
-			);
-		}
+// 			processDict.beginTime.push(result.beginTime.value);
+// 			processDict.propertyLabel.push(propertyLabel);
+// 			processDict.objectLabel.push(objectLabel);
+// 			processDict.source.push(
+// 				result.graph.value.replace("https://eventkg.l3s.uni-hannover.de/graph/", "")
+// 			);
+// 		}
 
-		return processDict;
-	} catch (error) {
-		console.error("Error in getEventsTemp:", error.message);
-		return null;
-	}
-}
+// 		return processDict;
+// 	} catch (error) {
+// 		console.error("Error in getEventsTemp:", error.message);
+// 		return null;
+// 	}
+// }
 
-async function getEventsText(name, start, end) {
-	if (end === "present") {
-		end = "3000";
-	}
+// async function getEventsText(name, start, end) {
+// 	if (end === "present") {
+// 		end = "3000";
+// 	}
 
-	const sparqlQuery = `
-	SELECT DISTINCT ?beginTime ?endTime STR(?description) AS ?description ?graph
-	WHERE {
-			?actor owl:sameAs dbr:${name} .
-			?event rdf:type eventkg-s:TextEvent .
-			?event sem:hasActor ?actor.
-			GRAPH ?graph { 
-					?event sem:hasBeginTimeStamp ?startTime . 
-			}
-			?event dcterms:description ?description .
-			FILTER(LANG(?description) = "en") .
-			?event sem:hasBeginTimeStamp ?beginTime .
-			OPTIONAL { ?event sem:hasEndTimeStamp ?endTime . }
-			FILTER (?beginTime >= "${start}-01-01"^^xsd:date) 
-	}
-	ORDER BY ?beginTime
-`;
+// 	const sparqlQuery = `
+// 	SELECT DISTINCT ?beginTime ?endTime STR(?description) AS ?description ?graph
+// 	WHERE {
+// 			?actor owl:sameAs dbr:${name} .
+// 			?event rdf:type eventkg-s:TextEvent .
+// 			?event sem:hasActor ?actor.
+// 			GRAPH ?graph { 
+// 					?event sem:hasBeginTimeStamp ?startTime . 
+// 			}
+// 			?event dcterms:description ?description .
+// 			FILTER(LANG(?description) = "en") .
+// 			?event sem:hasBeginTimeStamp ?beginTime .
+// 			OPTIONAL { ?event sem:hasEndTimeStamp ?endTime . }
+// 			FILTER (?beginTime >= "${start}-01-01"^^xsd:date) 
+// 	}
+// 	ORDER BY ?beginTime
+// `;
 
-	const endpoint = "https://eventkginterface.l3s.uni-hannover.de/sparql";
+// 	const endpoint = "https://eventkginterface.l3s.uni-hannover.de/sparql";
 
-	try {
-		const results = await fetchEvents(sparqlQuery, endpoint);
+// 	try {
+// 		const results = await fetchEvents(sparqlQuery, endpoint);
 
-		const processDict = {
-			beginTime: [],
-			endTime: [],
-			description: [],
-			source: [],
-		};
+// 		const processDict = {
+// 			beginTime: [],
+// 			endTime: [],
+// 			description: [],
+// 			source: [],
+// 		};
 
-		for (const result of results) {
-			const description = result.description.value;
+// 		for (const result of results) {
+// 			const description = result.description.value;
 
-			if (processDict.description.includes(description)) continue;
+// 			if (processDict.description.includes(description)) continue;
 
-			try {
-				if (result.endTime?.value && result.endTime.value <= `${end}-12-31`) {
-					processDict.endTime.push(result.endTime.value);
-				} else {
-					continue;
-				}
-			} catch {
-				processDict.endTime.push("");
-			}
+// 			try {
+// 				if (result.endTime?.value && result.endTime.value <= `${end}-12-31`) {
+// 					processDict.endTime.push(result.endTime.value);
+// 				} else {
+// 					continue;
+// 				}
+// 			} catch {
+// 				processDict.endTime.push("");
+// 			}
 
-			processDict.description.push(description);
-			processDict.beginTime.push(result.beginTime.value);
-			processDict.source.push(
-				result.graph.value.replace("https://eventkg.l3s.uni-hannover.de/graph/", "")
-			);
-		}
+// 			processDict.description.push(description);
+// 			processDict.beginTime.push(result.beginTime.value);
+// 			processDict.source.push(
+// 				result.graph.value.replace("https://eventkg.l3s.uni-hannover.de/graph/", "")
+// 			);
+// 		}
 
-		return processDict;
-	} catch (error) {
-		console.error("Error in getEventsText:", error.message);
-		return null;
-	}
-}
+// 		return processDict;
+// 	} catch (error) {
+// 		console.error("Error in getEventsText:", error.message);
+// 		return null;
+// 	}
+// }
 
 // Master function that integrates the provided functions
 async function collectEvents(eventsTemp, eventsText) {
