@@ -1,12 +1,14 @@
 require('dotenv').config();
 
 const express = require('express');
+const bodyParser = require('body-parser');
+
 const ejs = require('ejs');
 
 const path = require('path')
 
 
-const graph = require('./graph');
+const services = require('./services');
 const app = express();
 
 app.set('view engine', 'ejs');
@@ -25,6 +27,9 @@ app.use((req, res, next) => {
   next();
 });
 
+// parse application/json
+app.use(bodyParser.json());   
+
 app.get("/", (req, res) => {
   res.render('visualization');
 });
@@ -32,6 +37,41 @@ app.get("/", (req, res) => {
 app.get("/getDataDirect/:wikidataCode/:year/:includeID", (req, res) => {
   console.log(req.params.year);
   res.send(JSON.stringify({ username: "example" }))
+});
+
+
+app.post("/fetchData", async (req, res) => {
+  const data = req.body
+  console.log(data.year1);
+
+
+  const jsonNew = await services.getDataDirect(data.wikidataCode, data.year1, data.includeID);
+  const jsonOld = await services.getDataDirect(data.wikidataCode, data.year2, data.includeID);
+
+  const name = await services.getDbpName(data.wikidataCode)
+
+  const eventsTemp = await services.getEventsTemp(name, data.year2, data.year1);
+  const eventsText = await services.getEventsText(name, data.year2, data.year1);
+
+  const eventsAll = await services.collectEvents(eventsTemp, eventsText);
+
+
+
+  // totalStatementsYear1 = jsonNew.totalStatements;
+  // totalStatementsYear2 = jsonOld.totalStatements;
+
+
+  // const explanationResult = await masterExplanationFunction(
+  //   category,
+  //   relatedStatement, // Entire statement the object node is part of
+  //   year2,
+  //   year1,
+  //   eventsAll, // Collected events
+  //   eventsTemp, // Temporal events
+  //   eventsText // Textual events
+  // );
+
+  res.json({jsonNew: jsonNew, jsonOld: jsonOld, eventsTemp: eventsTemp, eventsText: eventsText, eventsAll: eventsAll});
 });
 
 
@@ -67,7 +107,8 @@ app.get("/getEventsText/:name/:start/:end", (req, res) => {
 app.get("/wd_query/*/*", (req, res) => {
   const year = req.params[0]
   const entity_id = req.params[1]
-  query.wikidata_query(year, feature_id, (error, data) => {
+
+    query.wikidata_query(year, feature_id, (error, data) => {
     res.json(data);
   });
 })

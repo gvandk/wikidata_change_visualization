@@ -38,18 +38,40 @@ async function createGraph() {
     }
   }
 
-  const jsonNew = await fetchData(`/getDataDirect/${wikidataCode}/${year1}/${includeID}`);
-  const jsonOld = await fetchData(`/getDataDirect/${wikidataCode}/${year2}/${includeID}`);
 
 
-  const name = await getDbpName(wikidataCode)
-  const eventsTemp = await getEventsTemp(name, year2, year1)
-  const eventsText = await getEventsText(name, year2, year1)
+  /////////////////////
 
-  const eventsAll = await collectEvents(eventsTemp, eventsText)
+  const rawResponse = await fetch('/fetchData', {
+    method: 'POST',
+    headers: {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ wikidataCode: wikidataCode, year1: year1, year2: year2, includeID: includeID })
+  });
+  const content = await rawResponse.json();
 
-  totalStatementsYear1 = jsonNew.totalStatements;
-  totalStatementsYear2 = jsonOld.totalStatements;
+
+  console.log('111111')
+  console.log(content);
+  console.log('222222')
+
+
+  //////////////////////////// Move to server
+  // const jsonNew = await fetchData(`/getDataDirect/${wikidataCode}/${year1}/${includeID}`);
+  // const jsonOld = await fetchData(`/getDataDirect/${wikidataCode}/${year2}/${includeID}`);
+
+
+  // const name = await getDbpName(wikidataCode)
+  // const eventsTemp = await getEventsTemp(name, year2, year1)
+  // const eventsText = await getEventsText(name, year2, year1)
+
+  // const eventsAll = await collectEvents(eventsTemp, eventsText)
+
+  // totalStatementsYear1 = jsonNew.totalStatements;
+  // totalStatementsYear2 = jsonOld.totalStatements;
+  ///////////////////////////////
 
   const { added, removed } = compare(jsonNew, jsonOld);
   const allStatements = added.concat(removed);
@@ -229,6 +251,8 @@ async function createGraph() {
 
       try {
 
+
+        // TODO: call remote function
         // Call masterExplanationFunction with required data
         const explanationResult = await masterExplanationFunction(
           category,
@@ -499,6 +523,79 @@ function resetZoom() {
       zoom.transform,
       d3.zoomIdentity.translate(svg.attr("width") / 2, svg.attr("height") / 2).scale(0.5)
     );
+}
+
+
+function compare(jsonNew, jsonOld) {
+  const results = { added: [], removed: [] };
+
+  if (jsonNew.status !== "success" || jsonOld.status !== "success") {
+    return results;
+  }
+
+  const mapNew = new Map();
+  jsonNew.data.forEach(item => {
+    const key = `${item.predicate}:${item.object}`;
+    mapNew.set(key, item);
+  });
+
+  const mapOld = new Map();
+  jsonOld.data.forEach(item => {
+    const key = `${item.predicate}:${item.object}`;
+    mapOld.set(key, item);
+  });
+
+  mapNew.forEach((value, key) => {
+    if (!mapOld.has(key)) {
+      results.added.push(value);
+    }
+  });
+
+  mapOld.forEach((value, key) => {
+    if (!mapNew.has(key)) {
+      results.removed.push(value);
+    }
+  });
+
+  return results;
+}
+
+async function extractWikidataCodeFromWikipediaLink(wikipediaLink) {
+  try {
+    const langPattern = /^https?:\/\/(\w{2,3})\.wikipedia\.org\/wiki\/.+$/;
+    const match = wikipediaLink.match(langPattern);
+    if (!match || match.length < 2) {
+      throw new Error('Invalid Wikipedia link. Unable to detect language code.');
+    }
+
+    const languageCode = match[1];
+
+    const sparqlQuery = `
+			SELECT ?subject WHERE {
+				<${wikipediaLink}> schema:about ?subject ;
+													 schema:isPartOf <https://${languageCode}.wikipedia.org/>.
+			}
+		`;
+
+    const endpoint = 'https://query.wikidata.org/sparql';
+    const response = await axios.post(endpoint, sparqlQuery, {
+      headers: {
+        'Content-Type': 'application/sparql-query',
+        'Accept': 'application/sparql-results+json'
+      }
+    });
+
+    if (response.data && response.data.results.bindings.length > 0) {
+      const wikidataUrl = response.data.results.bindings[0].subject.value;
+      return wikidataUrl.split('/').pop();
+    } else {
+      throw new Error('Wikidata code not found for the given Wikipedia link.');
+    }
+  } catch (error) {
+    console.error('Error extracting Wikidata code:', error);
+    alert('Error extracting Wikidata code from Wikipedia link. Please check the link.');
+    return null;
+  }
 }
 
 // Add event listener to the reset zoom button
